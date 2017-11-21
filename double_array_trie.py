@@ -70,47 +70,48 @@ class DoubleArrayTrie(object):
     def add(self, word):
         # word += '#'
         self.chars.add_word(word)
-        s = self.root
+        start = self.root
         for i, c in enumerate(word):
             n = self.chars[c]
-            m = self.base[s] + n
-            if self.check[m] == 0:  # base[m]将会是独立节点
-                self.base[m] = -self.next_pos
-                self.check[m] = s
+            end = self.base[start] + n
+            if self.check[end] == 0:  # base[end]将会是独立节点
+                self.base[end] = -self.next_pos
+                self.check[end] = start
                 self.tails[self.next_pos] = word[i+1:] + '#'
                 self.next_pos += len(self.tails[self.next_pos])
-            else:  # 从check[m]到m的有向边已存在
-                s = self.check[m]
-                if self.base[s] < 0:  # base[s]是独立节点
-                    pos = -self.base[s]
+                break
+            else:  # 从check[end]到end的有向边已存在
+                start = self.check[end]
+                if self.base[start] < 0:  # base[start]是独立节点
+                    pos = -self.base[start]
                     tail1 = self.tails[pos][:-1]
                     tail2 = word[i+1:]
                     if tail1 == tail2:  # 该word已存在
                         return True
                     lcp = self.longest_common_prefix(tail1, tail2)
                     q = self.x_check(lcp)
-                    self.base[s] = q
+                    self.base[start] = q
                     for new_c in lcp:  # 存储公共前缀字符串
                         new_n = self.chars[new_c]
-                        new_m = self.base[s] + new_n
-                        self.check[new_m] = s
-                        s = new_m
+                        new_m = self.base[start] + new_n
+                        self.check[new_m] = start
+                        start = new_m
                     len_lcp = len(lcp)
                     x = tail1[len_lcp:]
                     y = tail2[len_lcp:]
                     q = self.x_check(x[0]+y[0])
 
-                    self.base[s] = q
+                    self.base[start] = q
                     n = self.chars[x[0]]
-                    m = self.base[s] + n
-                    self.base[m] = -pos
-                    self.check[m] = s
+                    end = self.base[start] + n
+                    self.base[end] = -pos
+                    self.check[end] = start
                     self.tails[pos] = x + '#'
 
                     n = self.chars[y[0]]
-                    m = self.base[s] + n
-                    self.base[m] = -self.next_pos
-                    self.check[m] = s
+                    end = self.base[start] + n
+                    self.base[end] = -self.next_pos
+                    self.check[end] = start
                     self.tails[self.next_pos] = y + '#'
                     self.next_pos += len(self.tails[self.next_pos])
 
@@ -151,4 +152,5 @@ if __name__ == '__main__':
     print 'Length: {}'.format(len(c))
     print c
     print "c['x'] = {}".format(c['x'])
+
 
