@@ -115,7 +115,7 @@ class DoubleArrayTrie(object):
                         return True
                     return False
 
-    def add(self, word):
+    def insert(self, word):
         if not self.check_word(word):
             return False
         self.chars.add_word(word)
@@ -167,6 +167,7 @@ class DoubleArrayTrie(object):
                     old_start: self.find_arcs(old_start),
                 }
                 if len(conflict[start]) + 1 > len(conflict[old_start]):
+                    # 更改冲突较小的节点
                     change_node = old_start
                 else:
                     change_node = start
@@ -174,12 +175,14 @@ class DoubleArrayTrie(object):
                 q = self.x_check(conflict[change_node])
                 self.base[change_node] = q
                 for c in conflict[change_node]:
+                    # 转移冲突的节点
                     arc = self.chars[c]
                     old_end = temp_base + arc
                     new_end = self.base[change_node] + arc
                     self.base[new_end] = self.base[old_end]
                     self.check[new_end] = self.check[old_end]
                     if self.base[old_end] > 0:
+                        # 当old_end是其他节点的父节点时，需要将它对应的子节点对应的父节点更改为new_end
                         for key, value in self.check.iteritems():
                             if value == old_end:
                                 self.check[key] = new_end
