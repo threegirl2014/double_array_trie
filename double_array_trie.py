@@ -34,6 +34,9 @@ class CharDict(object):
             if not self._char_dict[c]:
                 self._char_dict[c] = len(self._char_dict) + 1
 
+    def iteritems(self):
+        return self._char_dict.iteritems()
+
     def __str__(self):
         return str(self._char_dict)
 
@@ -81,21 +84,27 @@ class DoubleArrayTrie(object):
                     if compare_result:
                         return True, [word,]
                     return False, [word[:i+1] + tail1[:-1],]
+        arc = self.chars['#']
+        end = self.base[start] + arc
+        if self.check[end] != start:
+            return False, self.get_node_strs(word, start)
+        else:
+            return True, [word,]
 
     def get_node_strs(self, prefix, start):
         result = []
         for tail in self.get_node_tails(start):
-            result.append(prefix+tail)
+            result.append(prefix+tail[:-1])
         return result
 
     def get_node_tails(self, start):
         if self.base[start] < 0:
-            return [self.tails[-self.base[start]][:-1],]
+            return [self.tails[-self.base[start]],]
         else:
             arcs = self.find_arcs(start)
             result = []
             for arc in arcs:
-                end = self.base[start] + arc
+                end = self.base[start] + self.chars[arc]
                 tails = self.get_node_tails(end)
                 for tail in tails:
                     result.append(arc+tail)
@@ -227,7 +236,7 @@ class DoubleArrayTrie(object):
 
     def find_arcs(self, start):
         arcs = []
-        reverse_chars = {v:k for k,v in self.chars}
+        reverse_chars = {v:k for k,v in self.chars.iteritems()}
         for key, value in self.check.iteritems():
             if value == start:
                 arc = key - self.base[start]
@@ -267,4 +276,5 @@ if __name__ == '__main__':
     print trie
     for word in words:
         print trie.search(word)
+    print trie.search('b')
 
