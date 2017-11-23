@@ -47,6 +47,11 @@ class DoubleArrayTrie(object):
         self.tails = defaultdict(int)
         self.next_pos = 1  # tails中下一个可插入的位置
         self.root = 1   # root节点
+        for word in words:
+            self.insert(word)
+
+    def __str__(self):
+        return 'chars: {}\nbase: {}\ncheck: {}\ntails: {}'.format(str(self.chars), str(self.base), str(self.check), str(self.tails))
 
     def check_word(self, word):
         return False if '#' in word else True
@@ -252,4 +257,14 @@ if __name__ == '__main__':
     print c
     print "c['x'] = {}".format(c['x'])
 
+    words = ['baby', 'bachelor', 'badage', 'jar']
+    trie = DoubleArrayTrie(words=words)
+    print trie
+    for word in words:
+        print trie.search(word)
+    words = ['ba', 'bac', 'be', 'bae']
+    trie = DoubleArrayTrie(words=words)
+    print trie
+    for word in words:
+        print trie.search(word)
 
