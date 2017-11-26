@@ -37,6 +37,9 @@ class CharDict(object):
     def iteritems(self):
         return self._char_dict.iteritems()
 
+    def iterkeys(self):
+        return self._char_dict.iterkeys()
+
     def __str__(self):
         return str(self._char_dict)
 
@@ -68,46 +71,47 @@ class DoubleArrayTrie(object):
 
     def search(self, word):
         if not self.check_word(word):
-            return False
+            return 'word ilegal', None
         start = self.root
         for i, c in enumerate(word):
             arc = self.chars[c]
             end = self.base[start] + arc
             if self.check[end] == 0:
-                return False, None
+                return 'not exists', None
             elif self.check[end] != start:
-                return False, self.get_node_strs(word[:i+1], start)
+                return 'exists part prefix', self.get_node_strs(word[:i+1], start)
             else:
                 start = end
                 if self.base[start] < 0:
                     compare_result, pos, tail1, _ = self.compare_tails(start, word, i)
                     if compare_result:
-                        return True, [word,]
-                    return False, [word[:i+1] + tail1[:-1],]
-        arc = self.chars['#']
-        end = self.base[start] + arc
+                        return 'exists', [word,]
+                    return 'exists part prefix', [word[:i+1] + tail1[:-1],]
+        end = self.base[start] + self.chars['#']
         if self.check[end] != start:
-            return False, self.get_node_strs(word, start)
+            return 'exists prefix', self.get_node_strs(word, start)
         else:
-            return True, [word,]
+            return 'exists', [word,]
 
     def get_node_strs(self, prefix, start):
+        '''获取所有经过start节点的字符串，prefix是start节点之前的边组成的前缀字符串'''
         result = []
         for tail in self.get_node_tails(start):
             result.append(prefix+tail[:-1])
         return result
 
     def get_node_tails(self, start):
+        '''获取所有以start节点为开始的后缀字符串'''
         if self.base[start] < 0:
             return [self.tails[-self.base[start]],]
         else:
-            arcs = self.find_arcs(start)
+            arcs, c_list = self.find_arcs(start)
             result = []
-            for arc in arcs:
-                end = self.base[start] + self.chars[arc]
+            for arc,c in zip(arcs, c_list):
+                end = self.base[start] + arc
                 tails = self.get_node_tails(end)
                 for tail in tails:
-                    result.append(arc+tail)
+                    result.append(c+tail)
             return result
 
     def delete(self, word):
@@ -128,6 +132,14 @@ class DoubleArrayTrie(object):
                         self.base[start] = self.check[start] = 0
                         return True
                     return False
+        end = self.base[start] + self.chars['#']
+        if self.check[end] == start:
+            self.tails.pop(-self.base[end])
+            self.base[end] = self.check[end] = 0
+            return True
+        else:
+            return False
+
 
     def insert(self, word):
         if not self.check_word(word):
@@ -171,7 +183,7 @@ class DoubleArrayTrie(object):
                     self.tails[pos] = x[1:]
                     # 将y保存到tails中
                     end = self.add_arc(y[0], start)
-                    self.write_tail(start, end, y[1:])
+                    self.write_tail(start, end, y[1:])  # 因为返回的tail2中已包含'#'所以此处不需要再加
                     return True
             else:
                 # 从start到end的有向边不存在，此时发生冲突
@@ -180,24 +192,23 @@ class DoubleArrayTrie(object):
                     start: self.find_arcs(start),
                     old_start: self.find_arcs(old_start),
                 }
-                if len(conflict[start]) + 1 > len(conflict[old_start]):
+                if len(conflict[start][0]) + 1 > len(conflict[old_start][0]):
                     # 更改冲突较小的节点
                     change_node = old_start
                 else:
                     change_node = start
                 temp_base = self.base[change_node]
-                q = self.x_check(conflict[change_node])
+                q = self.x_check(conflict[change_node][1])
                 self.base[change_node] = q
-                for c in conflict[change_node]:
+                for arc in conflict[change_node][0]:
                     # 转移冲突的节点
-                    arc = self.chars[c]
                     old_end = temp_base + arc
                     new_end = self.base[change_node] + arc
                     self.base[new_end] = self.base[old_end]
                     self.check[new_end] = self.check[old_end]
                     if self.base[old_end] > 0:
                         # 当old_end是其他节点的父节点时，需要将它对应的子节点对应的父节点更改为new_end
-                        for key, value in self.check.iteritems():
+                        for key, value in self.check.iteritems():  # 是否需要如同find_arcs方法中，使用遍历chars的方法？
                             if value == old_end:
                                 self.check[key] = new_end
                     self.base[old_end] = self.check[old_end] = 0
@@ -206,6 +217,7 @@ class DoubleArrayTrie(object):
                 return True
 
     def longest_common_prefix(self, *words):
+        '''返回多个字符串的最长公共子串'''
         lcp = ''
         for item in zip(*words):
             if len(set(item)) == 1:
@@ -215,6 +227,10 @@ class DoubleArrayTrie(object):
         return lcp
 
     def x_check(self, word):
+        '''
+        在base数组中发生冲突时，找到最近一个基准位置，确保有足够的空位保存冲突节点.
+        即，要找到一个赋值给base[start]的值，能够保证所有对应的冲突节点对应的check[end]都为0.
+        '''
         q = 1
         while 1:
             if all(self.check[q + self.chars[c]] == 0 for c in word):
@@ -229,23 +245,27 @@ class DoubleArrayTrie(object):
         self.next_pos += len(self.tails[self.next_pos])
 
     def add_arc(self, c, start):
+        '''加一条从start节点开始，边对应的字符是c的有向边'''
         arc = self.chars[c]
         end = self.base[start] + arc
         self.check[end] = start
         return end
 
     def find_arcs(self, start):
-        arcs = []
-        reverse_chars = {v:k for k,v in self.chars.iteritems()}
-        for key, value in self.check.iteritems():
-            if value == start:
-                arc = key - self.base[start]
-                arcs.append(reverse_chars[arc])
-        return arcs
-#        for c in self.chars:
-#            if self.check[self.base[start] + self.chars[c]] == start:
-#                arcs.append(c)
+        '''找到start节点对应的所有边和所有end节点'''
+        arcs, c_list = [], []
+#        reverse_chars = {v:k for k,v in self.chars.iteritems()}
+#        for key, value in self.check.iteritems():
+#            if value == start:
+#                arc = key - self.base[start]
+#                arcs.append(arc)
 #        return arcs
+        for c in self.chars.iterkeys():
+            arc = self.chars[c]
+            if self.check[self.base[start] + arc] == start:
+                arcs.append(arc)
+                c_list.append(c)
+        return arcs, c_list
 
     def search_exists(self, word):
         pass
@@ -276,5 +296,7 @@ if __name__ == '__main__':
     print trie
     for word in words:
         print trie.search(word)
+    #for c in trie.chars.iterkeys(): print c
     print trie.search('b')
+    print trie.search('a')
 
