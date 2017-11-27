@@ -199,7 +199,7 @@ class DoubleArrayTrie(object):
                     # 将y保存到tails中
                     end = self.add_arc(y[0], start)
                     word_obj.update({'string': y[1:]})
-                    self.write_tail(start, end, word_obj)  # 因为返回的tail2中已包含'#'所以此处不需要再加
+                    self.write_tail(start, end, word_obj)  # 因为返回的tail2中已包含split字符所以此处不需要再加
                     return True
             else:
                 # 从start到end的有向边不存在，此时发生冲突
