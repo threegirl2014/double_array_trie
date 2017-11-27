@@ -15,7 +15,7 @@ class CharDict(object):
         self._split_character = split
 
         start = 1
-        self._char_dict['#'] = start
+        self._char_dict[split] = start
         for index, item in enumerate(char_set):
             self._char_dict[item] = index + start + 1
 
@@ -60,13 +60,17 @@ class DoubleArrayTrie(object):
     def __str__(self):
         return 'chars: {}\nbase: {}\ncheck: {}\ntails: {}'.format(str(self.chars), str(self.base), str(self.check), str(self.tails))
 
+    @property
+    def split(self):
+        return self.chars.split
+
     def check_word(self, word):
-        return False if '#' in word else True
+        return False if self.split in word else True
 
     def compare_tails(self, start, word, i):
         pos = -self.base[start]
         tail1 = self.tails[pos].copy()
-        tail2 = word[i+1:] + '#'  # 通过'#'字符来规避一个字符串是另一个字符串的子串的情况
+        tail2 = word[i+1:] + self.split  # 通过split字符来规避一个字符串是另一个字符串的子串的情况
         compare_result = True if tail1['string'] == tail2 else False
         return compare_result, pos, tail1, tail2
 
@@ -90,7 +94,7 @@ class DoubleArrayTrie(object):
                         return 'exists', [tail1,]
                     tail1.update({'string': word[:i+1] + tail1['string'][:-1]})
                     return 'exists part prefix', [tail1,]
-        end = self.base[start] + self.chars['#']
+        end = self.base[start] + self.chars[self.split]
         if self.check[end] != start:
             return 'exists prefix', self.get_node_strs(word, start)
         else:
@@ -139,7 +143,7 @@ class DoubleArrayTrie(object):
                         self.base[start] = self.check[start] = 0
                         return True
                     return False
-        end = self.base[start] + self.chars['#']
+        end = self.base[start] + self.chars[self.split]
         if self.check[end] == start:
             self.tails.pop(-self.base[end])
             self.base[end] = self.check[end] = 0
@@ -150,7 +154,7 @@ class DoubleArrayTrie(object):
 
     def insert(self, word_obj):
         word_obj = word_obj.copy()
-        word = word_obj.get('string', '#')
+        word = word_obj.get('string', self.split)
         if not self.check_word(word):
             return False
         self.chars.add_word(word)
@@ -160,7 +164,7 @@ class DoubleArrayTrie(object):
             end = self.base[start] + arc
             if self.check[end] == 0:
                 # base[end]将会变成独立节点，后续字符串将会保存到tails中
-                word_obj.update({'string': word[i+1:]+'#'})
+                word_obj.update({'string': word[i+1:]+self.split})
                 self.write_tail(start, end, word_obj)
                 return True
             elif self.check[end] == start:
@@ -225,7 +229,7 @@ class DoubleArrayTrie(object):
                                 self.check[key] = new_end
                     self.base[old_end] = self.check[old_end] = 0
 
-                word_obj.update({'string': word[i+1:]+'#'})
+                word_obj.update({'string': word[i+1:]+self.split})
                 self.write_tail(start, end, word_obj)
                 return True
 
