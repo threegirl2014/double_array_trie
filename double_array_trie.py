@@ -46,15 +46,16 @@ class CharDict(object):
 
 class DoubleArrayTrie(object):
 
-    def __init__(self, words, split='#'):
+    def __init__(self, word_objs, split='#'):
+        words = [item['string'] for item in word_objs]
         self.chars = CharDict(words, split)
         self.base = defaultdict(int)
         self.check = defaultdict(int)
-        self.tails = defaultdict(int)
+        self.tails = defaultdict(dict)
         self.next_pos = 1  # tails中下一个可插入的位置
         self.root = 1   # root节点
-        for word in words:
-            self.insert(word)
+        for word_obj in word_objs:
+            self.insert(word_obj)
 
     def __str__(self):
         return 'chars: {}\nbase: {}\ncheck: {}\ntails: {}'.format(str(self.chars), str(self.base), str(self.check), str(self.tails))
@@ -64,9 +65,9 @@ class DoubleArrayTrie(object):
 
     def compare_tails(self, start, word, i):
         pos = -self.base[start]
-        tail1 = self.tails[pos]
+        tail1 = self.tails[pos].copy()
         tail2 = word[i+1:] + '#'  # 通过'#'字符来规避一个字符串是另一个字符串的子串的情况
-        compare_result = True if tail1 == tail2 else False
+        compare_result = True if tail1['string'] == tail2 else False
         return compare_result, pos, tail1, tail2
 
     def search(self, word):
@@ -85,25 +86,30 @@ class DoubleArrayTrie(object):
                 if self.base[start] < 0:
                     compare_result, pos, tail1, _ = self.compare_tails(start, word, i)
                     if compare_result:
-                        return 'exists', [word,]
-                    return 'exists part prefix', [word[:i+1] + tail1[:-1],]
+                        tail1.update({'string': word})
+                        return 'exists', [tail1,]
+                    tail1.update({'string': word[:i+1] + tail1['string'][:-1]})
+                    return 'exists part prefix', [tail1,]
         end = self.base[start] + self.chars['#']
         if self.check[end] != start:
             return 'exists prefix', self.get_node_strs(word, start)
         else:
-            return 'exists', [word,]
+            result = self.tails[-self.base[end]].copy()
+            result.update({'string': word})
+            return 'exists', [result,]
 
     def get_node_strs(self, prefix, start):
         '''获取所有经过start节点的字符串，prefix是start节点之前的边组成的前缀字符串'''
         result = []
         for tail in self.get_node_tails(start):
-            result.append(prefix+tail[:-1])
+            tail.update({'string': prefix+tail['string'][:-1]})
+            result.append(tail)
         return result
 
     def get_node_tails(self, start):
         '''获取所有以start节点为开始的后缀字符串'''
         if self.base[start] < 0:
-            return [self.tails[-self.base[start]],]
+            return [self.tails[-self.base[start]].copy(),]
         else:
             arcs, c_list = self.find_arcs(start)
             result = []
@@ -111,7 +117,8 @@ class DoubleArrayTrie(object):
                 end = self.base[start] + arc
                 tails = self.get_node_tails(end)
                 for tail in tails:
-                    result.append(c+tail)
+                    tail.update({'string': c+tail['string']})
+                    result.append(tail)
             return result
 
     def delete(self, word):
@@ -141,7 +148,9 @@ class DoubleArrayTrie(object):
             return False
 
 
-    def insert(self, word):
+    def insert(self, word_obj):
+        word_obj = word_obj.copy()
+        word = word_obj.get('string', '#')
         if not self.check_word(word):
             return False
         self.chars.add_word(word)
@@ -151,7 +160,8 @@ class DoubleArrayTrie(object):
             end = self.base[start] + arc
             if self.check[end] == 0:
                 # base[end]将会变成独立节点，后续字符串将会保存到tails中
-                self.write_tail(start, end, word[i+1:]+'#')
+                word_obj.update({'string': word[i+1:]+'#'})
+                self.write_tail(start, end, word_obj)
                 return True
             elif self.check[end] == start:
                 # 从start到end的有向边已存在
@@ -163,7 +173,7 @@ class DoubleArrayTrie(object):
                         # 该word已存在
                         return True
 
-                    lcp = self.longest_common_prefix(tail1, tail2)  # 找到最长公共子串
+                    lcp = self.longest_common_prefix(tail1['string'], tail2)  # 找到最长公共子串
                     if lcp is not '':
                         q = self.x_check(lcp)
                         for new_c in lcp:  # 存储公共前缀字符串
@@ -173,17 +183,19 @@ class DoubleArrayTrie(object):
 
                     len_lcp = len(lcp)
                     # x != y 一定成立
-                    x, y = tail1[len_lcp:], tail2[len_lcp:]
+                    x, y = tail1['string'][len_lcp:], tail2[len_lcp:]
                     q = self.x_check(x[0]+y[0])
 
                     self.base[start] = q
                     # 将x保存到tails中
                     end = self.add_arc(x[0], start)
                     self.base[end] = -pos
-                    self.tails[pos] = x[1:]
+                    tail1.update({'string': x[1:]})
+                    self.tails[pos] = tail1
                     # 将y保存到tails中
                     end = self.add_arc(y[0], start)
-                    self.write_tail(start, end, y[1:])  # 因为返回的tail2中已包含'#'所以此处不需要再加
+                    word_obj.update({'string': y[1:]})
+                    self.write_tail(start, end, word_obj)  # 因为返回的tail2中已包含'#'所以此处不需要再加
                     return True
             else:
                 # 从start到end的有向边不存在，此时发生冲突
@@ -213,7 +225,8 @@ class DoubleArrayTrie(object):
                                 self.check[key] = new_end
                     self.base[old_end] = self.check[old_end] = 0
 
-                self.write_tail(start, end, word[i+1:]+'#')
+                word_obj.update({'string': word[i+1:]+'#'})
+                self.write_tail(start, end, word_obj)
                 return True
 
     def longest_common_prefix(self, *words):
@@ -238,11 +251,11 @@ class DoubleArrayTrie(object):
             q += 1
         return q
 
-    def write_tail(self, start, end, word):
+    def write_tail(self, start, end, word_obj):
         self.base[end] = -self.next_pos
         self.check[end] = start
-        self.tails[self.next_pos] = word
-        self.next_pos += len(self.tails[self.next_pos])
+        self.tails[self.next_pos] = word_obj
+        self.next_pos += len(self.tails[self.next_pos]['string'])
 
     def add_arc(self, c, start):
         '''加一条从start节点开始，边对应的字符是c的有向边'''
@@ -286,17 +299,18 @@ if __name__ == '__main__':
     print c
     print "c['x'] = {}".format(c['x'])
 
-    words = ['baby', 'bachelor', 'badage', 'jar']
-    trie = DoubleArrayTrie(words=words)
+    words = [{'string':'baby'}, {'string':'bachelor'}, {'string': 'badage'}, {'string':'jar'}]
+    trie = DoubleArrayTrie(word_objs=words)
     print trie
+    print words
     for word in words:
-        print trie.search(word)
-    words = ['ba', 'bac', 'be', 'bae']
-    trie = DoubleArrayTrie(words=words)
+        print trie.search(word['string'])
+    words = [{'string':'ba'}, {'string':'bac'}, {'string':'be'}, {'string':'bae'}]
+    trie = DoubleArrayTrie(word_objs=words)
     print trie
+    print words
     for word in words:
-        print trie.search(word)
-    #for c in trie.chars.iterkeys(): print c
+        print trie.search(word['string'])
     print trie.search('b')
     print trie.search('a')
 
