@@ -74,7 +74,7 @@ class DoubleArrayTrie(object):
         compare_result = True if tail1['string'] == tail2 else False
         return compare_result, pos, tail1, tail2
 
-    def search(self, word):
+    def search(self, word, only_exist=False):
         if not self.check_word(word):
             return 'word ilegal', None
         start = self.root
@@ -84,7 +84,10 @@ class DoubleArrayTrie(object):
             if self.check[end] == 0:
                 return 'not exists', None
             elif self.check[end] != start:
-                return 'exists part prefix', self.get_node_strs(word[:i+1], start)
+                if only_exist:
+                    return 'not exists', None
+                else:
+                    return 'exists part prefix', self.get_node_strs(word[:i+1], start)
             else:
                 start = end
                 if self.base[start] < 0:
@@ -92,11 +95,17 @@ class DoubleArrayTrie(object):
                     if compare_result:
                         tail1.update({'string': word})
                         return 'exists', [tail1,]
-                    tail1.update({'string': word[:i+1] + tail1['string'][:-1]})
-                    return 'exists part prefix', [tail1,]
+                    if only_exist:
+                        return 'not exists', None
+                    else:
+                        tail1.update({'string': word[:i+1] + tail1['string'][:-1]})
+                        return 'exists part prefix', [tail1,]
         end = self.base[start] + self.chars[self.split]
         if self.check[end] != start:
-            return 'exists prefix', self.get_node_strs(word, start)
+            if only_exist:
+                return 'not exists', None
+            else:
+                return 'exists prefix', self.get_node_strs(word, start)
         else:
             result = self.tails[-self.base[end]].copy()
             result.update({'string': word})
@@ -285,7 +294,7 @@ class DoubleArrayTrie(object):
         return arcs, c_list
 
     def search_exists(self, word):
-        pass
+        return self.search(word, only_exist=True)
 
 
 if __name__ == '__main__':
