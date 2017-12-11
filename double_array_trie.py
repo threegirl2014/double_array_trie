@@ -54,6 +54,7 @@ class DoubleArrayTrie(object):
         self.tails = defaultdict(dict)
         self.next_pos = 1  # tails中下一个可插入的位置
         self.root = 1   # root节点
+        self.base[self.root] = 1
         if word_objs is None:
             return
         for word_obj in word_objs:
@@ -82,14 +83,16 @@ class DoubleArrayTrie(object):
         start = self.root
         for i, c in enumerate(word):
             arc = self.chars[c]
+            if not arc and not i:
+                return 'not exists', None
             end = self.base[start] + arc
             if self.check[end] == 0:
                 return 'not exists', None
             elif self.check[end] != start:
-                if only_exist:
-                    return 'not exists', None
-                else:
-                    return 'exists part prefix', self.get_node_strs(word[:i+1], start)
+                #if only_exist:
+                return 'not exists', None
+                #else:
+                    #return 'exists part prefix', self.get_node_strs(word[:i+1], start)
             else:
                 start = end
                 if self.base[start] < 0:
