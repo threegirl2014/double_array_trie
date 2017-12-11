@@ -46,7 +46,7 @@ class CharDict(object):
 
 class DoubleArrayTrie(object):
 
-    def __init__(self, word_objs, split='#'):
+    def __init__(self, word_objs=None, split='#'):
         words = [item['string'] for item in word_objs]
         self.chars = CharDict(words, split)
         self.base = defaultdict(int)
@@ -54,6 +54,8 @@ class DoubleArrayTrie(object):
         self.tails = defaultdict(dict)
         self.next_pos = 1  # tails中下一个可插入的位置
         self.root = 1   # root节点
+        if word_objs is None:
+            return
         for word_obj in word_objs:
             self.insert(word_obj)
 
