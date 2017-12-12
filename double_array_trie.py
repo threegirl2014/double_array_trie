@@ -222,18 +222,19 @@ class DoubleArrayTrie(object):
                     start: self.find_arcs(start),
                     old_start: self.find_arcs(old_start),
                 }
-                if len(conflict[start][0]) + 1 > len(conflict[old_start][0]):
-                    # 更改冲突较小的节点
-                    change_node = old_start
-                else:
+                # 更改冲突较小的节点
+                if (start == end) or (len(conflict[start][0]) + 1 <= len(conflict[old_start][0])):
                     change_node = start
+                    conflict[start][1].append(c)
+                else:
+                    change_node = old_start
                 temp_base = self.base[change_node]
                 q = self.x_check(conflict[change_node][1])
                 self.base[change_node] = q
-                for arc in conflict[change_node][0]:
+                for temp_arc in conflict[change_node][0]:
                     # 转移冲突的节点
-                    old_end = temp_base + arc
-                    new_end = self.base[change_node] + arc
+                    old_end = temp_base + temp_arc
+                    new_end = self.base[change_node] + temp_arc
                     self.base[new_end] = self.base[old_end]
                     self.check[new_end] = self.check[old_end]
                     if self.base[old_end] > 0:
@@ -244,6 +245,10 @@ class DoubleArrayTrie(object):
                     self.base[old_end] = self.check[old_end] = 0
 
                 word_obj.update({'string': word[i+1:]+self.split})
+                end = self.base[start] + arc
+                assert self.base[end] == 0 and self.check[end] == 0
+                #if self.base[end] or self.check[end]:
+                #    print 'error'
                 self.write_tail(start, end, word_obj)
                 return True
 
