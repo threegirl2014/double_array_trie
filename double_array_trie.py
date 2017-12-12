@@ -291,8 +291,7 @@ class DoubleArrayTrie(object):
 #                arc = key - self.base[start]
 #                arcs.append(arc)
 #        return arcs
-        for c in self.chars.iterkeys():
-            arc = self.chars[c]
+        for c, arc in self.chars.iteritems():
             if self.check[self.base[start] + arc] == start:
                 arcs.append(arc)
                 c_list.append(c)
