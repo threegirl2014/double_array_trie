@@ -193,8 +193,8 @@ class DoubleArrayTrie(object):
 
                     lcp = self.longest_common_prefix(tail1['string'], tail2)  # 找到最长公共子串
                     if lcp is not '':
-                        q = self.x_check(lcp)
                         for new_c in lcp:  # 存储公共前缀字符串
+                            q = self.x_check(lcp)
                             self.base[start] = q
                             # 下一个节点
                             start = self.add_arc(new_c, start)
