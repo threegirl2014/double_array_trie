@@ -284,6 +284,7 @@ class DoubleArrayTrie(object):
         '''加一条从start节点开始，边对应的字符是c的有向边'''
         arc = self.chars[c]
         end = self.base[start] + arc
+        assert self.base[end] == 0 and self.check[end] == 0
         self.check[end] = start
         return end
 
